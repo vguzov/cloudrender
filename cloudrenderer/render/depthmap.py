@@ -9,8 +9,8 @@ class DepthVideo(SimplePointcloud, DynamicTimedRenderable):
     VIDEO_RELOAD_THRESH = 100
     DEFAULT_COLOR = (255, 255, 0, 255)
 
-    def __init__(self, pc_table, color = None, camera = None, shadowmaps = None, additional_lights = None):
-        super().__init__(camera, shadowmaps, additional_lights)
+    def __init__(self, pc_table, color = None, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.pc_table_ext = np.dstack([pc_table, np.ones(pc_table.shape[:2] + (1,), dtype=pc_table.dtype)])
         self.color_override = False
         self.start_ind = 0

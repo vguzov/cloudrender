@@ -30,11 +30,11 @@ vec4 dirlight_calculation(DirLight light, vec4 color, vec3 normal, vec3 view_dir
     float diff = max(dot(normal, light_dir), 0.0);
     // specular shading
     vec3 reflect_dir = reflect(-light_dir, normal);
-    float spec = pow(max(dot(view_dir, reflect_dir), 0.0), shininess);
+    float spec = shininess > 0 ? pow(max(dot(view_dir, reflect_dir), 0.0), shininess) : 1.0;
     // combine results
-    vec3 frag_ambient  = light.intensity  * ambient;
-    vec3 frag_diffuse  = light.intensity  * diff * diffuse;
-    vec3 frag_specular = light.intensity * spec * specular;
+    vec3 frag_ambient  = vec3(ambient);
+    vec3 frag_diffuse  = vec3(light.intensity * diff * diffuse);
+    vec3 frag_specular = vec3(light.intensity * spec * specular);
 	vec3 color_sum = frag_ambient + frag_diffuse;
     return vec4(color_sum, 1.)*color + vec4(frag_specular, 1.);
 }

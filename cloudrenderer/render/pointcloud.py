@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from OpenGL import GL as gl
 from .renderable import Renderable
 from .shaders.shader_loader import Shader
-from .camera import BaseCameraModel, StandardProjectionCameraModel
+from ..camera.models import BaseCameraModel, StandardProjectionCameraModel
 from .shadowmap import ShadowMap
 from .lights import Light
 
@@ -21,9 +21,8 @@ class Pointcloud(Renderable, ABC):
         vertices: np.ndarray
         colors: np.ndarray
 
-    def __init__(self, camera: BaseCameraModel = None, shadowmaps: List[ShadowMap] = None,
-                 additional_lights: List[Light] = None):
-        super().__init__(camera, shadowmaps, additional_lights)
+    def __init__(self, camera: BaseCameraModel = None, draw_shadows: bool = True, generate_shadows: bool = True):
+        super().__init__(camera, draw_shadows, generate_shadows)
         self.render_back = True
 
 class SimplePointcloud(Pointcloud):
@@ -103,27 +102,31 @@ class SimplePointcloud(Pointcloud):
     def get_splat_size(self):
         return self.context.splat_size
 
-    def _upload_uniforms(self, shader_ids, lights=tuple()):
+    def _upload_uniforms(self, shader_ids, lights=(), shadowmaps=()):
         gl.glUniform1f(shader_ids['splat_size'], self.context.splat_size)
         shadowmaps_enabled = np.zeros(self.SHADOWMAPS_MAX, dtype=np.int32)
-        shadowmaps_enabled[:len(self.shadowmaps)] = 1
+        shadowmaps_enabled[:len(shadowmaps)] = 1
         M = self.context.Model
-        shadowmaps_lightMVP = [s.light_VP*M for s in self.shadowmaps]
+        shadowmaps_lightMVP = [np.array(s.light_VP*M) for s in shadowmaps]
         shadowmaps_lightMVP = np.array(shadowmaps_lightMVP, dtype='f4')
         if self.draw_shadows:
-            gl.glUniform1iv(self.context.shader_ids['shadowmap_enabled'], self.SHADOWMAPS_MAX, gl.GL_FALSE, shadowmaps_enabled)
-            gl.glUniformMatrix4fv(self.context.shader_ids['shadowmap_MVP'], len(self.shadowmaps), gl.GL_FALSE, shadowmaps_lightMVP)
+            gl.glUniform1iv(self.context.shader_ids['shadowmap_enabled'], self.SHADOWMAPS_MAX, shadowmaps_enabled)
+            gl.glUniformMatrix4fv(self.context.shader_ids['shadowmap_MVP'], len(shadowmaps), gl.GL_TRUE, shadowmaps_lightMVP)
             gl.glUniform4f(self.context.shader_ids['shadow_color'], *self.shadowcolor)
-            for shadow_ind, shadowmap in enumerate(self.shadowmaps):
+            for shadow_ind, shadowmap in enumerate(shadowmaps):
                 gl.glActiveTexture(gl.GL_TEXTURE0+shadow_ind)
                 gl.glBindTexture(gl.GL_TEXTURE_2D, shadowmap.texture)
 
-    def _draw(self, reset: bool, lights: List[Light]) -> bool:
+    def _upload_shadowngen_uniforms(self, shader_ids):
+        gl.glUniform1f(shader_ids['splat_size'], self.context.splat_size)
+
+    def _draw(self, reset: bool, lights: List[Light], shadowmaps: List[ShadowMap]) -> bool:
         """
         Internal draw pass
         Args:
             reset (bool): Reset drawing progress (for progressive drawing)
             lights (List[Light]): All light objects that influence the current object
+            shadowmaps (List[ShadowMap]): List of shadowmaps to draw shadows from
         Returns:
             bool: if drawing buffer was changed (if something was actually drawn)
         """
@@ -133,7 +136,7 @@ class SimplePointcloud(Pointcloud):
             if np.array(self.context.MV).dot(np.array([0, 0, 1, 0]))[2] <= 0:
                 return False
         self.shader.begin()
-        self.upload_uniforms(self.context.shader_ids, lights)
+        self.upload_uniforms(self.context.shader_ids, lights, shadowmaps)
 
         gl.glBindVertexArray(self.context.vao)
 
@@ -219,7 +222,7 @@ class SimplePointcloudProgressive(SimplePointcloud):
         super()._update_buffers(pointcloud)
         self.current_offset = 0
 
-    def _draw(self, reset: bool, lights: List[Light]) -> bool:
+    def _draw(self, reset: bool, lights: List[Light], shadowmaps: List[ShadowMap]) -> bool:
         if not self.render_back:
             if np.array(self.context.MV).dot(np.array([0, 0, 1, 0]))[2] <= 0:
                 return False
@@ -228,7 +231,7 @@ class SimplePointcloudProgressive(SimplePointcloud):
         if self.current_offset >= self.nglverts:
             return False
         self.shader.begin()
-        self.upload_uniforms(self.context.shader_ids)
+        self.upload_uniforms(self.context.shader_ids, lights, shadowmaps)
 
         gl.glBindVertexArray(self.context.vao)
 

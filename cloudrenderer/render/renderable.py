@@ -1,11 +1,10 @@
 import numpy as np
 import glm
-import json
 from typing import List, Dict
 from collections import defaultdict
 from scipy.spatial.transform import Rotation
 from OpenGL import GL as gl
-from .camera import BaseCameraModel, StandardProjectionCameraModel
+from ..camera.models import BaseCameraModel, StandardProjectionCameraModel
 from .lights import Light
 from .shadowmap import ShadowMap
 from .shaders.shader_loader import Shader
@@ -31,10 +30,7 @@ class Renderable:
         shader_ids = {k: gl.glGetUniformLocation(shader.program, k) for k in keys}
         return shader_ids
 
-    def __init__(self, camera: BaseCameraModel = None, shadowmaps: List[ShadowMap] = None,
-                 additional_lights: List[Light] = None):
-        shadowmaps = [] if shadowmaps is None else shadowmaps
-        assert len(shadowmaps) < self.SHADOWMAPS_MAX, f"No more than {self.SHADOWMAPS_MAX} are supported"
+    def __init__(self, camera: BaseCameraModel = None, draw_shadows: bool = False, generate_shadows: bool = False):
         self.camera = camera
         # whether to draw this object during the next draw() pass
         self.visible = True
@@ -42,16 +38,12 @@ class Renderable:
         self.initialized = False
         # defines whether OpenGL buffers and shaders are loaded
         self.context_initialized = False
-        # a list of shadows applied to this object
-        self.shadowmaps = shadowmaps
-        # a list of additional lights (other than main scene lights)
-        self.additional_lights = [] if additional_lights is None else additional_lights
         # additional features what requires shader replacement
         self.shader_mode = ''
-        # defines whether object supports drawing shadown during rendering
-        self.draw_shadows = len(self.shadowmaps) > 0
+        # defines whether object supports drawing shadow during rendering
+        self.draw_shadows = draw_shadows
         # defines whether object supports shadowmap update
-        self.generate_shadows = True
+        self.generate_shadows = generate_shadows
         # defines whether several draw() calls are needed to fully draw the object
         self.is_progressive = False
         # defines color of the shadow
@@ -68,25 +60,33 @@ class Renderable:
                 raise NotImplementedError(f"No more than {self.LIGHTS_MAX[light_type]} light of type '{light_type}'"
                                           f"are supported, got {count}")
 
-    def draw(self, reset: bool = True, global_lights: List[Light] = None) -> bool:
+    def check_shadowmaps(self, shadowmaps):
+        assert len(shadowmaps) == 0 or self.draw_shadows, "Shadow drawing is disabled for that object"
+        assert len(shadowmaps) < self.SHADOWMAPS_MAX, f"No more than {self.SHADOWMAPS_MAX} are supported"
+
+    def draw(self, reset: bool = True, lights: List[Light] = None, shadowmaps: List[ShadowMap] = None) -> bool:
         """
         Main draw pass
         Args:
             reset (bool): Reset drawing progress (for progressive drawing)
-            global_lights (List[Light]): Global scene light objects that influence the current object
+            lights (List[Light]): All light objects that insfuence the current object
+            shadowmaps (List[ShadowMap]): List of shadowmaps to draw shadows from
         Returns:
             bool: if drawing buffer was changed (if something was actually drawn)
         """
-        lights = self.additional_lights if global_lights is None else self.additional_lights + global_lights
+        lights = [] if lights is None else lights
+        shadowmaps = [] if shadowmaps is None else shadowmaps
         self.check_lights(lights)
-        return self._draw(reset, lights)
+        self.check_shadowmaps(shadowmaps)
+        return self._draw(reset, lights, shadowmaps)
 
-    def _draw(self, reset, lights) -> bool:
+    def _draw(self, reset, lights, shadowmaps) -> bool:
         """
         Internal draw pass
         Args:
             reset (bool): Reset drawing progress (for progressive drawing)
             lights (List[Light]): All light objects that insfuence the current object
+            shadowmaps (List[ShadowMap]): List of shadowmaps to draw shadows from
         Returns:
             bool: if drawing buffer was changed (if something was actually drawn)
         """
@@ -186,18 +186,19 @@ class Renderable:
         if self.context_initialized:
             self._reload_shaders()
 
-    def upload_uniforms(self, shader_ids: Dict[str, int], lights: List[Light]):
+    def upload_uniforms(self, shader_ids: Dict[str, int], lights: List[Light], shadowmaps: List[ShadowMap]):
         """
         Upload all uniform variables for the main drawing pass
         Args:
             shader_ids: dictionary containing uniforms locations
             lights: list of lights affecting current draw pass
+            shadowmaps: List of shadowmaps affecting current draw pass
         """
         self.camera.upload(shader_ids)
         gl.glUniformMatrix4fv(shader_ids['M'], 1, gl.GL_FALSE, glm.value_ptr(self.context.Model))
-        self._upload_uniforms(shader_ids, lights)
+        self._upload_uniforms(shader_ids, lights, shadowmaps)
 
-    def _upload_uniforms(self, shader_ids: Dict[str, int], lights: List[Light] = tuple()):
+    def _upload_uniforms(self, shader_ids: Dict[str, int], lights: List[Light] = (), shadowmaps = ()):
         pass
 
     def upload_shadowgen_uniforms(self, shadowmap_camera: StandardProjectionCameraModel, shader_ids: dict):
@@ -209,7 +210,10 @@ class Renderable:
         """
         shadowmap_camera.upload(shader_ids)
         gl.glUniformMatrix4fv(shader_ids['M'], 1, gl.GL_FALSE, glm.value_ptr(self.context.Model))
-        self._upload_uniforms(shader_ids)
+        self._upload_shadowngen_uniforms(shader_ids)
+
+    def _upload_shadowngen_uniforms(self, shader_ids):
+        pass
 
     def draw_shadowmap(self, shadowmap_camera: StandardProjectionCameraModel):
         self._draw_shadowmap(shadowmap_camera)
@@ -219,16 +223,16 @@ class Renderable:
 
 
 class DynamicRenderable(Renderable):
-    def __init__(self, camera: BaseCameraModel = None, shadowmaps: List[ShadowMap] = None,
-                 additional_lights: List[Light] = None):
-        super().__init__(camera, shadowmaps, additional_lights)
+    def __init__(self, camera: BaseCameraModel = None, draw_shadows: bool = False, generate_shadows: bool = False,
+                 *args, **kwargs):
+        super().__init__(camera, draw_shadows, generate_shadows)
         self.sequence_initialized = False
         self.current_sequence_frame_ind = 0
         self.sequence_len = 0
 
     def set_sequence(self, *args, **kwargs):
         self._set_sequence(*args, **kwargs)
-        assert self.sequence_len > 0, "Sequence length must be positive"
+        assert self.sequence_len > 0, "Sequence length must be positive, make sure to set it during _set_sequence()"
         self.sequence_initialized = True
 
     def _set_sequence(self, *args, **kwargs):
@@ -276,9 +280,9 @@ class DynamicRenderable(Renderable):
 
 
 class DynamicTimedRenderable(DynamicRenderable):
-    def __init__(self, camera: BaseCameraModel = None, shadowmaps: List[ShadowMap] = None,
-                 additional_lights: List[Light] = None):
-        super().__init__(camera, shadowmaps, additional_lights)
+    def __init__(self, camera: BaseCameraModel = None, draw_shadows: bool = False, generate_shadows: bool = False,
+                 *args, **kwargs):
+        super().__init__(camera, draw_shadows, generate_shadows)
         self.time_offset = 0
         self.default_frame_time = 1/60.
         self.sequence_frame_times = None

@@ -1,5 +1,6 @@
 #version 400
 #define SHADOWMAPS_MAX 6
+#define SHADOWDEPTH_EPS 5e-3
 
 struct DirLight {
     vec3 direction;
@@ -34,11 +35,11 @@ vec4 dirlight_calculation(DirLight light, vec4 color, vec3 normal, vec3 view_dir
     float diff = max(dot(normal, light_dir), 0.0);
     // specular shading
     vec3 reflect_dir = reflect(-light_dir, normal);
-    float spec = pow(max(dot(view_dir, reflect_dir), 0.0), shininess);
+    float spec = shininess > 0 ? pow(max(dot(view_dir, reflect_dir), 0.0), shininess) : 1.0;
     // combine results
-    vec3 frag_ambient  = light.intensity  * ambient;
-    vec3 frag_diffuse  = light.intensity  * diff * diffuse;
-    vec3 frag_specular = light.intensity * spec * specular;
+    vec3 frag_ambient  = vec3(ambient);
+    vec3 frag_diffuse  = vec3(light.intensity  * diff * diffuse);
+    vec3 frag_specular = vec3(light.intensity * spec * specular);
 	vec3 color_sum = frag_ambient + frag_diffuse;
     return vec4(color_sum, 1.)*color + vec4(frag_specular, 1.);
 }
@@ -49,7 +50,7 @@ bool shadow_calculation(sampler2D shadowmap, vec4 pose_shadow) {
 	float closest_depth = texture(shadowmap, projected_shadow.xy).r;
 	float current_depth = projected_shadow.z;
 	bool shadow = (projected_shadow.x>=0 && projected_shadow.x<=1 &&projected_shadow.y >=0 && projected_shadow.y<=1 &&
-	projected_shadow.z<1) && (current_depth > closest_depth) && (current_depth < closest_depth+0.5);
+	projected_shadow.z<1) && (current_depth-SHADOWDEPTH_EPS > closest_depth) && (current_depth < closest_depth+0.5);
 	return shadow;
 }
 
@@ -59,8 +60,8 @@ void main() {
 	vec4 color = dirlight_calculation(dirlight, fs_in.color, fs_in.normal, view_dir);
 
 	for (int i=0; i<SHADOWMAPS_MAX && shadowmap_enabled[i]; ++i) {
-		bool is_shadow = shadow_calculation(shadowmaps[i], pose_shadow[i]);
-		color = is_shadow ? vec4(shadowColor.rgb*shadowColor.a+color.rgb*(1-shadowColor.a), shadowColor.a + color.a*(1-shadowColor.a)):color;
+		bool is_shadow = shadow_calculation(shadowmaps[i], fs_in.pose_shadow[i]);
+		color = is_shadow ? vec4(shadow_color.rgb*shadow_color.a+color.rgb*(1-shadow_color.a), shadow_color.a + color.a*(1-shadow_color.a)):color;
 	}
 	out_color = color;
 }

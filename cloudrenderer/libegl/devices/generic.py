@@ -30,6 +30,8 @@
 # OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE
 # OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
+# Modified by Vladimir Guzov, 2021
+
 import OpenGL.EGL as egl
 from .. import EGL_PLATFORM_DEVICE_EXT, EGL_DRM_DEVICE_FILE_EXT, egl_convert_to_int_array
 from ctypes import pointer
@@ -78,8 +80,10 @@ class GenericEGLDevice:
     @property
     def name(self):
         if not hasattr(egl, 'eglQueryDeviceStringEXT'):
-            return "EGL device unknown"
+            return "<unknown EGL device>"
         devstr = egl.eglQueryDeviceStringEXT(self.egl_dev, EGL_DRM_DEVICE_FILE_EXT)
+        if devstr is None:
+            return "<unknown EGL device>"
         return "EGL device " + devstr.decode('ASCII')
     def create_surface(self, egl_dpy, egl_config):
         return GenericEGLSurface(egl_dpy, egl_config)

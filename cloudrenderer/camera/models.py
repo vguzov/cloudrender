@@ -16,8 +16,16 @@ class BaseCameraModel(ABC):
         self.context = self.CameraContext()
         self.model = camera_model
         self.context.View = glm.mat4(1.0)
+        self.quat = np.array([1.,0,0,0])
+        self.pose = np.zeros(3)
+        self.world2cam = False
 
-    def init_extrinsics(self, quat, pose, world2cam = False):
+    def init_extrinsics(self, quat=None, pose=None, world2cam = False):
+        quat = self.quat if quat is None else quat
+        pose = self.pose if pose is None else pose
+        self.quat = quat
+        self.pose = pose
+        self.world2cam = world2cam
         R = Rotation.from_quat(np.roll(quat, -1)).as_matrix()
         t = np.array([pose]).T
         if world2cam:
@@ -141,7 +149,7 @@ class OrthogonalCameraModel(StandardProjectionCameraModel):
 
     def init_intrinsics(self, image_size, left, right, bottom, top, far=20., near=0.05):
         width,height = image_size
-        self.context.Projection = glm.orthoRH(left, right, bottom, top, near, far)
+        self.context.Projection = glm.orthoLH(left, right, bottom, top, near, far)
         self.context.width_mul = image_size[1] / image_size[0]
 
 

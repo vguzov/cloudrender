@@ -1,4 +1,6 @@
 import os
+import json
+import pickle
 import trimesh
 import numpy as np
 import fnmatch
@@ -80,3 +82,10 @@ def get_camera_position(xyz_ang: Sequence[float], pos: Sequence[float]):
             [0.0, 0.0, 0.0, 1.0],
         ])
     return camera_pose.dot(z_rot.dot(y_rot.dot(x_rot)))
+
+def load_hps_sequence(poses_pickle_path, shape_json_path):
+    pkl_seq = pickle.load(open(poses_pickle_path, 'rb'))
+    shape = np.array(json.load(open(shape_json_path))['betas'])
+    res = [{"pose": pose, "translation": translation, "shape": shape}
+           for pose, translation in zip(pkl_seq['poses'], pkl_seq['transes'])]
+    return res

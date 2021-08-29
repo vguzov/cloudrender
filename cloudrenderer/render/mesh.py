@@ -1,4 +1,6 @@
 import os
+
+import logging
 import numpy as np
 from abc import ABC
 from typing import List, Union
@@ -9,7 +11,8 @@ from OpenGL import GL as gl
 from .shaders.shader_loader import Shader
 from .renderable import Renderable
 from .lights import Light, DirectionalLight
-from .camera import StandardProjectionCameraModel
+from .shadowmap import ShadowMap
+from ..camera.models import StandardProjectionCameraModel
 
 
 class Mesh(Renderable, ABC):
@@ -20,8 +23,8 @@ class Mesh(Renderable, ABC):
         colors: np.ndarray
         vertex_normals: np.ndarray
 
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+    def __init__(self, *args, draw_shadows: bool = True, generate_shadows: bool = True, **kwargs):
+        super().__init__(*args, draw_shadows=draw_shadows, generate_shadows=generate_shadows, **kwargs)
 
 class SimpleMesh(Mesh):
     @dataclass
@@ -110,17 +113,17 @@ class SimpleMesh(Mesh):
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.context.normalbuffer)
         gl.glBufferData(gl.GL_ARRAY_BUFFER, glnorms.nbytes, glnorms, gl.GL_DYNAMIC_DRAW)
 
-    def _upload_uniforms(self, shader_ids, lights=tuple()):
+    def _upload_uniforms(self, shader_ids, lights=(), shadowmaps=()):
         shadowmaps_enabled = np.zeros(self.SHADOWMAPS_MAX, dtype=np.int32)
-        shadowmaps_enabled[:len(self.shadowmaps)] = 1
+        shadowmaps_enabled[:len(shadowmaps)] = 1
         M = self.context.Model
-        shadowmaps_lightMVP = [s.light_VP*M for s in self.shadowmaps]
+        shadowmaps_lightMVP = [np.array(s.light_VP*M) for s in shadowmaps]
         shadowmaps_lightMVP = np.array(shadowmaps_lightMVP, dtype='f4')
         if self.draw_shadows:
-            gl.glUniform1iv(self.context.shader_ids['shadowmap_enabled'], self.SHADOWMAPS_MAX, gl.GL_FALSE, shadowmaps_enabled)
-            gl.glUniformMatrix4fv(self.context.shader_ids['shadowmap_MVP'], len(self.shadowmaps), gl.GL_FALSE, shadowmaps_lightMVP)
+            gl.glUniform1iv(self.context.shader_ids['shadowmap_enabled'], self.SHADOWMAPS_MAX, shadowmaps_enabled)
+            gl.glUniformMatrix4fv(self.context.shader_ids['shadowmap_MVP'], len(shadowmaps), gl.GL_TRUE, shadowmaps_lightMVP)
             gl.glUniform4f(self.context.shader_ids['shadow_color'], *self.shadowcolor)
-            for shadow_ind, shadowmap in enumerate(self.shadowmaps):
+            for shadow_ind, shadowmap in enumerate(shadowmaps):
                 gl.glActiveTexture(gl.GL_TEXTURE0+shadow_ind)
                 gl.glBindTexture(gl.GL_TEXTURE_2D, shadowmap.texture)
         if len(lights)>0:
@@ -138,7 +141,7 @@ class SimpleMesh(Mesh):
         gl.glUniform1f(self.context.shader_ids['specular'], material.specular)
         gl.glUniform1f(self.context.shader_ids['shininess'], material.shininess)
 
-    def _draw(self, reset: bool, lights: List[Light]) -> bool:
+    def _draw(self, reset: bool, lights: List[Light], shadowmaps: List[ShadowMap]) -> bool:
         """
         Internal draw pass
         Args:
@@ -150,7 +153,7 @@ class SimpleMesh(Mesh):
         if not reset:
             return False
         self.shader.begin()
-        self.upload_uniforms(self.context.shader_ids, lights)
+        self.upload_uniforms(self.context.shader_ids, lights, shadowmaps)
 
         gl.glBindVertexArray(self.context.vao)
 
@@ -196,7 +199,6 @@ class SimpleMesh(Mesh):
         gl.glDisableVertexAttribArray(0)
         self.shadowgen_shader.end()
         return True
-
 
 
 
