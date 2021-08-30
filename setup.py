@@ -37,7 +37,7 @@ requirements = [
 #     data_files[dirpath].append(filepath)
 # data_files = [(k,v) for k,v in data_files.items()]
 package_path = "cloudrender/render/shaders"
-package_files = {"cloudrender.render.shaders": [os.path.relpath(package_path, x)
+package_files = {"cloudrender.render.shaders": [os.path.relpath(x, package_path)
                                                 for x in glob('cloudrender/render/shaders/**/*.glsl', recursive=True)]}
 
 setup(
