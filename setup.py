@@ -25,17 +25,12 @@ requirements = [
         "torch",
         "tqdm",
         "smplpytorch",
+        "chumpy",
         "PyOpenGL==3.1.5",
         "videoio>=0.2.3"
 ]
 
 # Include shaders
-# for filepath in glob('cloudrender/render/shaders/**/*.glsl', recursive=True):
-#     dirpath = os.path.dirname(filepath)
-#     if dirpath not in data_files:
-#         data_files[dirpath] = []
-#     data_files[dirpath].append(filepath)
-# data_files = [(k,v) for k,v in data_files.items()]
 package_path = "cloudrender/render/shaders"
 package_files = {"cloudrender.render.shaders": [os.path.relpath(x, package_path)
                                                 for x in glob('cloudrender/render/shaders/**/*.glsl', recursive=True)]}
