@@ -1,4 +1,5 @@
 # cloudrender: an OpenGL framework for pointcloud and mesh rendering
+A visualization framework capable of rendering large pointclouds, dynamic SMPL models and more. Used to visualize results in our Human POSEitioning System (HPS) project: http://virtualhumans.mpi-inf.mpg.de/hps/
 
 ## Requirements
 - GPU with OpenGL 4.0 
@@ -33,6 +34,9 @@ The following script will write a short video inside `test_assets/output.mp4` wh
 <p align="center">
 <img src="images/test_scene_video_output_example.gif" alt="output example"/>
 </p>
+
+## More data
+Please check our HPS project page for more 3D scans and motion data: http://virtualhumans.mpi-inf.mpg.de/hps/
 
 ## Citation
 
