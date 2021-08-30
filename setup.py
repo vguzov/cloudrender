@@ -1,4 +1,4 @@
-from setuptools import setup
+from setuptools import setup, find_packages
 version = '1.0.0'
 
 with open("README.md", "r") as fi:
@@ -28,7 +28,7 @@ requirements = [
 
 setup(
     name="cloudrender",
-    packages=["cloudrender"],
+    packages=find_packages(),
     version=version,
     description="An OpenGL framework for pointcloud and mesh rendering",
     author="Vladimir Guzov",
