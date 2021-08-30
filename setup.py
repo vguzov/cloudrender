@@ -29,10 +29,14 @@ requirements = [
         "videoio>=0.2.3"
 ]
 
-data_files = []
+data_files = {}
 # Include shaders
 for filepath in glob('cloudrender/render/shaders/**/*.glsl', recursive=True):
-    data_files.append((os.path.dirname(filepath), filepath))
+    dirpath = os.path.dirname(filepath)
+    if dirpath not in data_files:
+        data_files[dirpath] = []
+    data_files[dirpath].append(filepath)
+data_files = [(k,v) for k,v in data_files.items()]
 
 setup(
     name="cloudrender",
