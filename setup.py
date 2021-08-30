@@ -44,6 +44,7 @@ setup(
     name="cloudrender",
     packages=find_packages(),
     package_data=package_files,
+    include_package_data=True,
     version=version,
     description="An OpenGL framework for pointcloud and mesh rendering",
     author="Vladimir Guzov",
