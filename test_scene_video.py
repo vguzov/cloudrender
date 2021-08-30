@@ -1,22 +1,22 @@
 # On some systems, EGL does not start properly if OpenGL was already initialized, that's why it's better
 # to keep EGLContext import on top
-from cloudrenderer.libegl import EGLContext
+from cloudrender.libegl import EGLContext
 import logging
 import numpy as np
 import sys
 import os
 import json
 import smplpytorch
-from cloudrenderer.render import SimplePointcloud, DirectionalLight
-from cloudrenderer.render.smpl import AnimatableSMPLModel
-from cloudrenderer.camera import PerspectiveCameraModel
-from cloudrenderer.camera.trajectory import Trajectory
-from cloudrenderer.scene import Scene
-from cloudrenderer.capturing import AsyncPBOCapture
+from cloudrender.render import SimplePointcloud, DirectionalLight
+from cloudrender.render.smpl import AnimatableSMPLModel
+from cloudrender.camera import PerspectiveCameraModel
+from cloudrender.camera.trajectory import Trajectory
+from cloudrender.scene import Scene
+from cloudrender.capturing import AsyncPBOCapture
 from videoio import VideoWriter
 from OpenGL import GL as gl
 from tqdm import tqdm
-from cloudrenderer.utils import trimesh_load_from_zip, load_hps_sequence
+from cloudrender.utils import trimesh_load_from_zip, load_hps_sequence
 
 logger = logging.getLogger("main_script")
 logger.setLevel(logging.INFO)
