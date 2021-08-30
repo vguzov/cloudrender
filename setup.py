@@ -22,7 +22,7 @@ requirements = [
         "trimesh",
         "tqdm",
         "smplpytorch",
-        "opengl==3.1.5",
+        "PyOpenGL==3.1.5",
         "videoio>=0.2.3"
 ]
 
