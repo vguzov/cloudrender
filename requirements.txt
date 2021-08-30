@@ -4,5 +4,6 @@ pyglm>=2.2.0
 trimesh
 tqdm
 smplpytorch
+torch >= 1.8.0
 PyOpenGL==3.1.5
 videoio>=0.2.3

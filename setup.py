@@ -1,3 +1,5 @@
+import os
+from glob import glob
 from setuptools import setup, find_packages
 version = '1.0.0'
 
@@ -20,15 +22,22 @@ requirements = [
         "scipy",
         "pyglm>=2.2.0",
         "trimesh",
+        "torch",
         "tqdm",
         "smplpytorch",
         "PyOpenGL==3.1.5",
         "videoio>=0.2.3"
 ]
 
+data_files = []
+# Include shaders
+for filepath in glob('cloudrender/render/shaders/**/*.glsl', recursive=True):
+    data_files.append((os.path.dirname(filepath), filepath))
+
 setup(
     name="cloudrender",
     packages=find_packages(),
+    data_files=data_files,
     version=version,
     description="An OpenGL framework for pointcloud and mesh rendering",
     author="Vladimir Guzov",
