@@ -29,19 +29,21 @@ requirements = [
         "videoio>=0.2.3"
 ]
 
-data_files = {}
 # Include shaders
-for filepath in glob('cloudrender/render/shaders/**/*.glsl', recursive=True):
-    dirpath = os.path.dirname(filepath)
-    if dirpath not in data_files:
-        data_files[dirpath] = []
-    data_files[dirpath].append(filepath)
-data_files = [(k,v) for k,v in data_files.items()]
+# for filepath in glob('cloudrender/render/shaders/**/*.glsl', recursive=True):
+#     dirpath = os.path.dirname(filepath)
+#     if dirpath not in data_files:
+#         data_files[dirpath] = []
+#     data_files[dirpath].append(filepath)
+# data_files = [(k,v) for k,v in data_files.items()]
+package_path = "cloudrender/render/shaders"
+package_files = {"cloudrender.render.shaders": [os.path.relpath(package_path, x)
+                                                for x in glob('cloudrender/render/shaders/**/*.glsl', recursive=True)]}
 
 setup(
     name="cloudrender",
     packages=find_packages(),
-    data_files=data_files,
+    package_data=package_files,
     version=version,
     description="An OpenGL framework for pointcloud and mesh rendering",
     author="Vladimir Guzov",
