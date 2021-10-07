@@ -2,7 +2,30 @@ import ctypes
 import numpy as np
 from OpenGL import GL as gl
 
-class AsyncPBOCapture():
+class DirectCapture:
+    """A helper capturing class. Gets the color or depth data from the current FBO"""
+    def __init__(self, resolution):
+        self.resolution = resolution
+
+    def request_color(self):
+        width, height = self.resolution
+        color_buf = gl.glReadPixels(0, 0, width, height, gl.GL_RGB, gl.GL_UNSIGNED_BYTE)
+        color = np.frombuffer(color_buf, np.uint8).reshape(height, width, 3)
+        color = color[::-1].copy()
+        return color
+
+    def request_depth(self):
+        width, height = self.resolution
+        depth_buf = gl.glReadPixels(0, 0, width, height, gl.GL_DEPTH_COMPONENT, gl.GL_FLOAT)
+        depth = np.frombuffer(depth_buf, np.float32).reshape(height, width)
+        depth = depth[::-1].copy()
+        return depth
+
+
+class AsyncPBOCapture:
+    """A helper capturing class. Gets the color from the current FBO.
+    Submits the task to the OpenGL driver to be executed asynchronously.
+    Doesn't wait on CPU<->GPU exchange which improves speed in most cases"""
     def __init__(self, resolution, queue_size):
         self.queue_size = queue_size
         self.resolution = resolution
@@ -42,6 +65,7 @@ class AsyncPBOCapture():
         gl.glBindBuffer(gl.GL_PIXEL_PACK_BUFFER, pbo)
         bufferdata = gl.glMapBuffer(gl.GL_PIXEL_PACK_BUFFER, gl.GL_READ_ONLY)
         data = np.frombuffer(ctypes.string_at(bufferdata, (3 * width * height)), np.uint8).reshape(height, width, 3)
+        data = data[::-1].copy()
         gl.glUnmapBuffer(gl.GL_PIXEL_PACK_BUFFER)
         gl.glBindBuffer(gl.GL_PIXEL_PACK_BUFFER, 0)
         self.qlen -= 1

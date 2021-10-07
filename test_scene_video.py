@@ -158,11 +158,11 @@ with VideoWriter("test_assets/output.mp4", resolution=resolution, fps=fps) as vw
         color = capturing.request_color_async()
         # If received the previous frame, write it to the video
         if color is not None:
-            vw.write(color[::-1])
+            vw.write(color)
     # Flush the remaining frames
     logger.info("Flushing PBO queue")
     color = capturing.get_first_requested_color()
     while color is not None:
-        vw.write(color[::-1])
+        vw.write(color)
         color = capturing.get_first_requested_color()
 logger.info("Done")
