@@ -2,7 +2,23 @@ import ctypes
 import numpy as np
 from OpenGL import GL as gl
 
-class AsyncPBOCapture():
+class DirectCapture:
+    def __init__(self, resolution):
+        self.resolution = resolution
+
+    def request_color(self):
+        width, height = self.resolution
+        color_buf = gl.glReadPixels(0, 0, width, height, gl.GL_RGB, gl.GL_UNSIGNED_BYTE)
+        color = np.frombuffer(color_buf, np.uint8).reshape(height, width, 3)
+        return color
+
+    def request_depth(self):
+        width, height = self.resolution
+        depth_buf = gl.glReadPixels(0, 0, width, height, gl.GL_DEPTH_COMPONENT, gl.GL_FLOAT)
+        depth = np.frombuffer(depth_buf, np.float32).reshape(height, width)
+        return depth
+
+class AsyncPBOCapture:
     def __init__(self, resolution, queue_size):
         self.queue_size = queue_size
         self.resolution = resolution
