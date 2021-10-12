@@ -21,6 +21,12 @@ class DirectCapture:
         depth = depth[::-1].copy()
         return depth
 
+    def __enter__(self):
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        pass
+
 
 class AsyncPBOCapture:
     """A helper capturing class. Gets the color from the current FBO.
