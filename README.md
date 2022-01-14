@@ -17,7 +17,7 @@ pip install -r requirements.txt
 ```
 or install as a package with
 ```
-pip install git+https://github.com/vguzov/cloudrender.git
+pip install cloudrender
 ```
 #### Step 2. Get the SMPL model
 - Follow install instructions at https://github.com/gulvarol/smplpytorch
