@@ -33,6 +33,9 @@ void main(){
 								distorsion_coeff[2]*(radius_sq+2*xy1.y*xy1.y)+2*distorsion_coeff[3]*xy1.x*xy1.y);
 	vec2 xy2 = xy1*radial_distorsion+tan_distorsion;
 	vec2 res = focal_dist*xy2+center_off;
+	// Invert Y-axis to convert from OpenCV format (Y down, Z forward, X right, right-handed)
+	// to OpenGL screen space format (Y up, Z forward, X right, left-handed)
+	res = res*vec2(1,-1);
 
 	gl_Position = vec4(res,
 	                   length(vertexPosMV)*sign(vertexPosMV.z)/far*2-1,

@@ -21,6 +21,14 @@ class DirectCapture:
         depth = depth[::-1].copy()
         return depth
 
+    def request_inds(self):
+        width, height = self.resolution
+        gl.glReadBuffer(gl.GL_COLOR_ATTACHMENT1)
+        ind_buf = gl.glReadPixels(0, 0, width, height, gl.GL_RED_INTEGER, gl.GL_INT)
+        indices = np.frombuffer(ind_buf, np.int32).reshape(height, width)[::-1]
+        gl.glReadBuffer(gl.GL_COLOR_ATTACHMENT0)
+        return indices
+
     def __enter__(self):
         return self
 

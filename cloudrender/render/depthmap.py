@@ -16,6 +16,7 @@ class DepthVideo(SimplePointcloud, DynamicTimedRenderable):
         self.start_ind = 0
         self.current_sequence_frame_ind = -1
         self.seqlen = 0
+        self.current_frame_cloud = None
         if color is None:
             self.color = self.DEFAULT_COLOR
         else:
@@ -51,6 +52,7 @@ class DepthVideo(SimplePointcloud, DynamicTimedRenderable):
         self.colors_iter = None
         self.sequence_len = 0
         self.times = None
+        self.current_frame_cloud = None
         self.current_sequence_frame_ind = self.start_ind
         self.delete_buffers()
 
@@ -81,6 +83,8 @@ class DepthVideo(SimplePointcloud, DynamicTimedRenderable):
             return dmap_frame, None
 
     def get_curr_pointcloud(self):
+        if self.current_frame_cloud is not None and self.current_frame_cloud[1] == self.current_sequence_frame_ind:
+            return self.current_frame_cloud[0]
         depth, colors = self.load_depth_color(self.current_sequence_frame_ind)
         nanmask = depth == 0
         d = depth.copy().astype(np.float) / 1000.
@@ -92,4 +96,6 @@ class DepthVideo(SimplePointcloud, DynamicTimedRenderable):
             colors = np.tile(np.array(self.color).astype(np.uint8).reshape(1, 4), (len(pc), 1))
         else:
             colors = colors[pc_validmask, :]
-        return self.PointcloudContainer(pc, colors)
+        cloud = self.PointcloudContainer(pc, colors)
+        self.current_frame_cloud = (cloud, self.current_sequence_frame_ind)
+        return cloud

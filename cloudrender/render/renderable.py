@@ -74,6 +74,8 @@ class Renderable:
         Returns:
             bool: if drawing buffer was changed (if something was actually drawn)
         """
+        if not self.visible:
+            return False
         lights = [] if lights is None else lights
         shadowmaps = [] if shadowmaps is None else shadowmaps
         self.check_lights(lights)
@@ -170,6 +172,8 @@ class Renderable:
             quat: quaternion in WXYZ format stored in np array of shape (4,)
             pose: translation offset vector of shape (3,)
         """
+        self.model_quat = quat
+        self.model_pose = pose
         # Only cam/local2world supported here
         R = Rotation.from_quat(np.roll(quat, -1)).as_matrix()
         t = np.array([pose]).T
@@ -229,6 +233,7 @@ class DynamicRenderable(Renderable):
         self.sequence_initialized = False
         self.current_sequence_frame_ind = 0
         self.sequence_len = 0
+        self.loaded_frame_ind = -1
 
     def set_sequence(self, *args, **kwargs):
         self._set_sequence(*args, **kwargs)
@@ -243,12 +248,15 @@ class DynamicRenderable(Renderable):
         self.sequence_initialized = False
         self.current_sequence_frame_ind = 0
         self.sequence_len = 0
+        self.loaded_frame_ind = -1
 
     def _unset_sequence(self):
         pass
 
     def load_current_frame(self):
-        self._load_current_frame()
+        if self.loaded_frame_ind != self.current_sequence_frame_ind:
+            self._load_current_frame()
+        self.loaded_frame_ind = self.current_sequence_frame_ind
 
     def _load_current_frame(self):
         pass

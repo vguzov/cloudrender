@@ -21,9 +21,11 @@ class Pointcloud(Renderable, ABC):
         vertices: np.ndarray
         colors: np.ndarray
 
-    def __init__(self, camera: BaseCameraModel = None, draw_shadows: bool = True, generate_shadows: bool = True):
+    def __init__(self, camera: BaseCameraModel = None, draw_shadows: bool = True, generate_shadows: bool = True,
+                 indexing_offset: int = None):
         super().__init__(camera, draw_shadows, generate_shadows)
         self.render_back = True
+        self.indexing_offset = indexing_offset
 
 class SimplePointcloud(Pointcloud):
     """
@@ -39,6 +41,8 @@ class SimplePointcloud(Pointcloud):
         super().__init__(*args, **kwargs)
 
     def _init_shaders(self, camera_model, shader_mode):
+        if self.indexing_offset is not None and (self.draw_shadows or self.generate_shadows):
+            raise NotImplementedError("Rendering to index map is not yet supported with any shadowing")
         self.shader = shader = Shader()
         dirname = os.path.dirname(os.path.abspath(__file__))
         if self.draw_shadows:
@@ -87,14 +91,25 @@ class SimplePointcloud(Pointcloud):
         gl.glBindBuffer( gl.GL_ARRAY_BUFFER, self.context.colorbuffer)
         gl.glBufferData( gl.GL_ARRAY_BUFFER, glcolors.nbytes, glcolors,  gl.GL_STATIC_DRAW)
 
+        if self.indexing_offset is not None:
+            glids = np.arange(self.indexing_offset, self.indexing_offset+self.nglverts, dtype=np.int32)
+            self.context.idbuffer = gl.glGenBuffers(1)
+            gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.context.idbuffer)
+            gl.glBufferData(gl.GL_ARRAY_BUFFER, glids.nbytes, glids, gl.GL_STATIC_DRAW)
+
     def _update_buffers(self, pointcloud: Union[Pointcloud.PointcloudContainer, trimesh.points.PointCloud]):
         glverts = np.copy(pointcloud.vertices.astype(np.float32), order='C')
         glcolors = np.copy(pointcloud.colors.astype(np.float32) / 255., order='C')
+        self.nglverts = len(glverts)
         gl.glBindVertexArray(self.context.vao)
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.context.vertexbuffer)
         gl.glBufferData(gl.GL_ARRAY_BUFFER, glverts.nbytes, glverts, gl.GL_DYNAMIC_DRAW)
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.context.colorbuffer)
         gl.glBufferData(gl.GL_ARRAY_BUFFER, glcolors.nbytes, glcolors, gl.GL_DYNAMIC_DRAW)
+        if self.indexing_offset is not None:
+            glids = np.arange(self.indexing_offset, self.indexing_offset + self.nglverts, dtype=np.int32)
+            gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.context.idbuffer)
+            gl.glBufferData(gl.GL_ARRAY_BUFFER, glids.nbytes, glids, gl.GL_DYNAMIC_DRAW)
 
     def set_splat_size(self, splat_size):
         self.context.splat_size = splat_size
@@ -147,6 +162,11 @@ class SimplePointcloud(Pointcloud):
         gl.glEnableVertexAttribArray(1)
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.context.colorbuffer)
         gl.glVertexAttribPointer(1, 4, gl.GL_FLOAT, gl.GL_FALSE, 0, None)
+
+        if self.indexing_offset is not None:
+            gl.glEnableVertexAttribArray(2)
+            gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.context.idbuffer)
+            gl.glVertexAttribIPointer(2, 1, gl.GL_INT, 0, None)
 
         gl.glDrawArrays(gl.GL_POINTS, 0, self.nglverts)
 
@@ -242,6 +262,11 @@ class SimplePointcloudProgressive(SimplePointcloud):
         gl.glEnableVertexAttribArray(1)
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.context.colorbuffer)
         gl.glVertexAttribPointer(1, 4, gl.GL_FLOAT, gl.GL_FALSE, 0, None)
+
+        if self.indexing_offset is not None:
+            gl.glEnableVertexAttribArray(2)
+            gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.context.idbuffer)
+            gl.glVertexAttribIPointer(2, 1, gl.GL_INT, 0, None)
 
         if self.progressive_draw_size is None:
             gl.glDrawArrays(gl.GL_POINTS, 0, self.nglverts)
