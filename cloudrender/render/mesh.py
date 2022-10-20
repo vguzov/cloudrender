@@ -44,6 +44,7 @@ class SimpleMesh(Mesh):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.material = SimpleMesh.MaterialProps()
+        self.set_overlay_color()
 
     def _init_shaders(self, camera_model, shader_mode):
         self.shader = shader = Shader()
@@ -59,7 +60,7 @@ class SimpleMesh(Mesh):
                                       [os.path.join(dirname, "shaders/simple_mesh/fragment.glsl")])
         self.context.shader_ids.update(self.locate_uniforms(self.shader, ['dirlight.direction', 'dirlight.intensity',
                                                                           'specular', 'shininess',
-                                                                          'ambient', 'diffuse']))
+                                                                          'ambient', 'diffuse', 'overlay_color']))
 
         if self.generate_shadows:
             self.shadowgen_shader = Shader()
@@ -73,6 +74,9 @@ class SimpleMesh(Mesh):
 
     def set_material(self, ambient=1., diffuse=0., specular=0., shininess=0.):
         self.material = self.MaterialProps(ambient, diffuse, specular, shininess)
+
+    def set_overlay_color(self, color=(200, 200, 200, 0)):
+        self.overlay_color = np.asarray(color, dtype=np.uint8)
 
     def _set_buffers(self, mesh: Union[Mesh.MeshContainer, trimesh.Trimesh]):
         faces = mesh.faces
@@ -145,6 +149,7 @@ class SimpleMesh(Mesh):
         gl.glUniform1f(self.context.shader_ids['diffuse'], material.diffuse)
         gl.glUniform1f(self.context.shader_ids['specular'], material.specular)
         gl.glUniform1f(self.context.shader_ids['shininess'], material.shininess)
+        gl.glUniform4f(self.context.shader_ids['overlay_color'], *(self.overlay_color.astype(np.float32)/255.))
 
     def _draw(self, reset: bool, lights: List[Light], shadowmaps: List[ShadowMap]) -> bool:
         """
