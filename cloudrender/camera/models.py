@@ -1,3 +1,5 @@
+from typing import Sequence, Union, Optional
+
 import numpy as np
 from abc import ABC, abstractmethod
 from OpenGL import GL as gl
@@ -16,11 +18,11 @@ class BaseCameraModel(ABC):
         self.context = self.CameraContext()
         self.model = camera_model
         self.context.View = glm.mat4(1.0)
-        self.quat = np.array([1.,0,0,0])
+        self.quat = np.array([1., 0, 0, 0])
         self.pose = np.zeros(3)
         self.world2cam = False
 
-    def init_extrinsics(self, quat=None, pose=None, world2cam = False):
+    def init_extrinsics(self, quat=None, pose=None, world2cam=False):
         quat = self.quat if quat is None else quat
         pose = self.pose if pose is None else pose
         self.quat = quat
@@ -31,7 +33,7 @@ class BaseCameraModel(ABC):
         if world2cam:
             RT = np.vstack([np.hstack([R, t]), [[0, 0, 0, 1]]])
         else:
-            #otherwise invert cam2world to world2cam
+            # otherwise invert cam2world to world2cam
             RT = np.vstack([np.hstack([R.T, -np.matmul(R.T, t)]), [[0, 0, 0, 1]]])
         self.context.View = glm.mat4(*(RT.T.astype(np.float32).copy().flatten()))
 
@@ -54,10 +56,21 @@ class BaseCameraModel(ABC):
         keys = self.uniforms_names if keys is None else keys
         return {k: gl.glGetUniformLocation(shader.program, k) for k in keys}
 
+    def project(self, points: np.ndarray, model_mtx: Optional[Union[glm.mat4x4, np.ndarray]] = None) -> np.ndarray:
+        """
+        Projects the points according to the camera model and returns the projected points in NDC (normalized device coordinates)
+        Args:
+            points (np.ndarray): points in the world coordinates
+
+        Returns:
+            np.ndarray: projected points in NDC, shape (-1,3)
+        """
+        raise NotImplementedError("Projection is not implemented for this camera type")
+
 
 class OcamCameraModel(BaseCameraModel):
     uniforms_names = BaseCameraModel.uniforms_names + ['ocam_invpol', 'ocam_affine', 'ocam_center_off',
-                       'ocam_theta_thresh', 'far', 'width_mul']
+                                                       'ocam_theta_thresh', 'far', 'width_mul']
 
     def __init__(self):
         super().__init__("ocam")
@@ -90,7 +103,7 @@ class OcamCameraModel(BaseCameraModel):
         gl.glUniform1dv(shader_ids['ocam_invpol'], 18, self.context.ocam_invpol.astype(np.float64).copy())
         gl.glUniform3dv(shader_ids['ocam_affine'], 1, self.context.ocam_affine.astype(np.float64).copy())
         gl.glUniform2dv(shader_ids['ocam_center_off'], 1,
-                     self.context.ocam_center_off.astype(np.float64).copy())
+                        self.context.ocam_center_off.astype(np.float64).copy())
         gl.glUniform1f(shader_ids['ocam_theta_thresh'], float(self.context.ocam_theta_thresh))
         gl.glUniform1f(shader_ids['far'], float(self.context.far))
         gl.glUniform1f(shader_ids['width_mul'], self.context.width_mul)
@@ -98,7 +111,7 @@ class OcamCameraModel(BaseCameraModel):
 
 class OpenCVCameraModel(BaseCameraModel):
     uniforms_names = BaseCameraModel.uniforms_names + ['distorsion_coeff', 'center_off',
-                     'focal_dist', 'far', 'width_mul']
+                                                       'focal_dist', 'far', 'width_mul']
 
     def __init__(self):
         super().__init__("opencv")
@@ -109,11 +122,11 @@ class OpenCVCameraModel(BaseCameraModel):
         focal_dist = np.array(focal_dist)
         center = np.array(center)
         distorsion_coeffs = np.array(distorsion_coeffs)
-        self.context.focal_dist = (focal_dist/image_size*2).astype(np.float32).copy()
-        self.context.center_off = (center/image_size*2 - 1).astype(np.float32).copy()
+        self.context.focal_dist = (focal_dist / image_size * 2).astype(np.float32).copy()
+        self.context.center_off = (center / image_size * 2 - 1).astype(np.float32).copy()
         self.context.distorsion_coeffs = distorsion_coeffs.astype(np.float32).copy()
         self.context.far = np.array(far).astype(np.float32).copy()
-        self.context.width_mul = image_size[1]/image_size[0]
+        self.context.width_mul = image_size[1] / image_size[0]
 
     def upload_intrinsics(self, shader_ids):
         gl.glUniform1fv(shader_ids['distorsion_coeff'], 5, self.context.distorsion_coeffs)
@@ -125,6 +138,7 @@ class OpenCVCameraModel(BaseCameraModel):
 
 class StandardProjectionCameraModel(BaseCameraModel, ABC):
     uniforms_names = BaseCameraModel.uniforms_names + ['P', 'width_mul']
+
     def __init__(self, name):
         super().__init__(name)
 
@@ -132,14 +146,23 @@ class StandardProjectionCameraModel(BaseCameraModel, ABC):
         gl.glUniformMatrix4fv(shader_ids['P'], 1, gl.GL_FALSE, glm.value_ptr(self.context.Projection))
         gl.glUniform1f(shader_ids['width_mul'], self.context.width_mul)
 
+    def project(self, points: np.ndarray, model_mtx: Optional[Union[glm.mat4x4, np.ndarray]] = None):
+        VP = np.asarray(self.context.Projection * self.context.View)
+        if model_mtx is not None:
+            VP = np.matmul(VP, np.asarray(model_mtx))
+        points = np.concatenate([points, np.ones((points.shape[0], 1), dtype=points.dtype)])
+        points_gl_projected = np.matmul(points, VP.T)
+        points_gl_projected = points_gl_projected[:, :3] / points_gl_projected[:, 3]  # NDC
+        return points_gl_projected
+
 
 class PerspectiveCameraModel(StandardProjectionCameraModel):
     def __init__(self):
         super().__init__("perspective")
 
     def init_intrinsics(self, image_size, fov=45., far=20., near=0.05):
-        width,height = image_size
-        self.context.Projection = glm.perspective(glm.radians(fov),float(width)/float(height),near,far)
+        width, height = image_size
+        self.context.Projection = glm.perspective(glm.radians(fov), float(width) / float(height), near, far)
         self.context.width_mul = image_size[1] / image_size[0]
 
 
@@ -148,7 +171,7 @@ class OrthogonalCameraModel(StandardProjectionCameraModel):
         super().__init__("orthogonal")
 
     def init_intrinsics(self, image_size, left, right, bottom, top, far=20., near=0.05):
-        width,height = image_size
+        width, height = image_size
         self.context.Projection = glm.orthoLH(left, right, bottom, top, near, far)
         self.context.width_mul = image_size[1] / image_size[0]
 

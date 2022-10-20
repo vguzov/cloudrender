@@ -18,7 +18,8 @@ class SMPLXModelBase(DynamicTimedRenderable):
                   "reye_pose"],
     }
 
-    def __init__(self, device=None, smpl_root=None, template=None, gender="neutral", model_type="smpl", global_offset=None, *args, **kwargs):
+    def __init__(self, device=None, smpl_root=None, template=None, gender="neutral", flat_hand_mean=True, model_type="smpl", global_offset=None,
+            *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.color = None
         self.smpl_root = smpl_root
@@ -33,11 +34,12 @@ class SMPLXModelBase(DynamicTimedRenderable):
             self.model_type = self.model_type.split("_")[0]
             smpl_compatible = True
         self.available_params = SMPLXModelBase.MODEL_PARAM_NAMES[self.model_type]
-        self._init_model(gender, smpl_compatible)
+        self._init_model(gender, smpl_compatible, flat_hand_mean)
         self.nglverts = len(self.get_vertices()[0])
 
-    def _init_model(self, gender='neutral', smpl_compatible=False):
-        self.model_layer = smplx.create(self.smpl_root, model_type=self.model_type, gender=gender).to(self.device)
+    def _init_model(self, gender='neutral', smpl_compatible=False, flat_hand_mean=True):
+        self.model_layer = smplx.create(self.smpl_root, model_type=self.model_type, gender=gender, use_pca=False, flat_hand_mean=flat_hand_mean).to(
+            self.device)
         self.model_layer.requires_grad_(False)
         if smpl_compatible:
             smpl_model = smplx.create(self.smpl_root, model_type="smpl", gender=gender)
@@ -86,6 +88,13 @@ class SMPLXModelBase(DynamicTimedRenderable):
         verts, normals = self.get_vertices(**model_params)
         mesh = Mesh.MeshContainer(verts.cpu().numpy(), self.faces_numpy, vertex_normals=normals.cpu().numpy())
         return mesh
+
+    def get_joints(self, **model_params):
+        self.update_params(**model_params)
+        batch_params = {x: self._current_params[x].unsqueeze(0) for x in self.available_params}
+        output = self.model_layer(**batch_params)
+        joints = output.joints.squeeze(0)
+        return joints.cpu().numpy()
 
     def _set_sequence(self, params_seq):
         self.params_sequence = params_seq

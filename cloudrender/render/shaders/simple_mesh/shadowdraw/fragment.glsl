@@ -41,7 +41,7 @@ vec4 dirlight_calculation(DirLight light, vec4 color, vec3 normal, vec3 view_dir
     vec3 frag_diffuse  = vec3(light.intensity  * diff * diffuse);
     vec3 frag_specular = vec3(light.intensity * spec * specular);
 	vec3 color_sum = frag_ambient + frag_diffuse;
-    return vec4(color_sum, 1.)*color + vec4(frag_specular, 1.);
+    return vec4(color_sum, 1.)*color + vec4(frag_specular, 0.);
 }
 
 bool shadow_calculation(sampler2D shadowmap, vec4 pose_shadow) {

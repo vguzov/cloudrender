@@ -285,6 +285,7 @@ class TexturedMesh(SimpleMesh):
         gl.glTexParameterf(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_WRAP_T, gl.GL_REPEAT)
         gl.glTexParameterf(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MAG_FILTER, gl.GL_LINEAR)
         gl.glTexParameterf(gl.GL_TEXTURE_2D, gl.GL_TEXTURE_MIN_FILTER, gl.GL_LINEAR)
+        gl.glPixelStorei(gl.GL_UNPACK_ALIGNMENT, 1)
         gl.glTexImage2D(gl.GL_TEXTURE_2D, 0, gl.GL_RGB, texture_data.shape[1], texture_data.shape[0], 0, gl.GL_RGB, gl.GL_UNSIGNED_BYTE,
                         gltexture)
 
