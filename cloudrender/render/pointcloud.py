@@ -59,7 +59,7 @@ class SimplePointcloud(Pointcloud):
 
         if self.generate_shadows:
             shadowgen_shader = self.shadowgen_shader = Shader()
-            shadowgen_shader.initShaderFromGLSL([os.path.join(dirname, f"shaders/simple_pointcloud/shadowgen/vertex_{camera_model}.glsl")],
+            shadowgen_shader.initShaderFromGLSL([os.path.join(dirname, f"shaders/simple_pointcloud/shadowgen/vertex_perspective.glsl")],
                                                 [os.path.join(dirname,
                                                               "shaders/simple_pointcloud/shadowgen/fragment.glsl")],
                                                 [os.path.join(dirname,

@@ -55,12 +55,16 @@ bool shadow_calculation(sampler2D shadowmap, vec4 pose_shadow) {
 	return shadow;
 }
 
+vec4 alpha_blending(vec4 orig_color, vec4 overlay_color)
+{
+    float res_alpha = overlay_color.a + orig_color.a*(1-overlay_color.a);
+	return vec4((res_alpha==0.0)?orig_color.rgb:((overlay_color.rgb*overlay_color.a+orig_color.rgb*(1-overlay_color.a))/res_alpha), res_alpha);
+}
+
 void main() {
 	vec3 camera_position = transpose(V)[3].xyz;
 	vec3 view_dir = normalize(camera_position - fs_in.pose);
-	vec4 orig_color = fs_in.color;
-	float res_alpha = overlay_color.a + orig_color.a*(1-overlay_color.a);
-	vec4 input_color = vec4((res_alpha==0.0)?orig_color.rgb:((overlay_color.rgb*overlay_color.a+orig_color.rgb*(1-overlay_color.a))/res_alpha), res_alpha);
+	vec4 input_color = alpha_blending(fs_in.color, overlay_color);
 //	vec4 input_color = vec4(overlay_color.rgb*(1-orig_color.a)+orig_color.rgb*orig_color.a, orig_color.a + overlay_color.a*(1-orig_color.a));
 	vec4 color = dirlight_calculation(dirlight, input_color, fs_in.normal, view_dir);
 

@@ -65,7 +65,7 @@ class SimpleMesh(Mesh):
         if self.generate_shadows:
             self.shadowgen_shader = Shader()
             self.shadowgen_shader.initShaderFromGLSL([
-                os.path.join(dirname, f"shaders/simple_mesh/shadowgen/vertex_{camera_model}.glsl")],
+                os.path.join(dirname, f"shaders/simple_mesh/shadowgen/vertex_perspective.glsl")],
                 [os.path.join(dirname, "shaders/simple_mesh/shadowgen/fragment.glsl")])
 
     def _delete_buffers(self):
@@ -230,12 +230,12 @@ class TexturedMesh(SimpleMesh):
                                       [os.path.join(dirname, "shaders/textured_mesh/fragment.glsl")])
         self.context.shader_ids.update(self.locate_uniforms(self.shader, ['dirlight.direction', 'dirlight.intensity',
                                                                           'specular', 'shininess',
-                                                                          'ambient', 'diffuse']))
+                                                                          'ambient', 'diffuse', 'overlay_color']))
 
         if self.generate_shadows:
             self.shadowgen_shader = Shader()
             self.shadowgen_shader.initShaderFromGLSL([
-                os.path.join(dirname, f"shaders/simple_mesh/shadowgen/vertex_{camera_model}.glsl")],
+                os.path.join(dirname, f"shaders/simple_mesh/shadowgen/vertex_perspective.glsl")],
                 [os.path.join(dirname, "shaders/simple_mesh/shadowgen/fragment.glsl")])
 
     def _delete_buffers(self):

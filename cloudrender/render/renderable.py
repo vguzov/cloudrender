@@ -258,6 +258,10 @@ class DynamicRenderable(Renderable):
             self._load_current_frame()
         self.loaded_frame_ind = self.current_sequence_frame_ind
 
+    def reload_current_frame(self):
+        self._load_current_frame()
+        self.loaded_frame_ind = self.current_sequence_frame_ind
+
     def _load_current_frame(self):
         pass
 

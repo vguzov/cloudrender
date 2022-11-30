@@ -1,5 +1,34 @@
 import torch
+from torch import Tensor
 from torch.nn import Module
+from smplx import SMPL, SMPLH, SMPLX
+from typing import Union, Optional
+
+def centrify_smplx_root_joint(smpl_model: Union[SMPL, SMPLH, SMPLX]):
+    def centrifying_forward(
+            betas: Optional[Tensor] = None,
+            body_pose: Optional[Tensor] = None,
+            global_orient: Optional[Tensor] = None,
+            transl: Optional[Tensor] = None,
+            return_verts=True,
+            return_full_pose: bool = False,
+            pose2rot: bool = True,
+            **kwargs
+    ):
+        smpl_output = old_forward(betas=betas, body_pose=body_pose, global_orient=global_orient, transl=transl,return_verts=return_verts, return_full_pose=return_full_pose, pose2rot=pose2rot, **kwargs)
+        apply_trans = transl is not None or hasattr(smpl_model, 'transl')
+        if transl is None and hasattr(smpl_model, 'transl'):
+            transl = smpl_model.transl
+        diff = -smpl_output.joints[0, 0, :]
+        if apply_trans:
+            diff = diff + transl
+        smpl_output.joints = smpl_output.joints + diff.view(1, 1, 3)
+        smpl_output.vertices = smpl_output.vertices + diff.view(1, 1, 3)
+        return smpl_output
+
+    old_forward = smpl_model.forward
+    smpl_model.forward = centrifying_forward
+    return smpl_model
 
 class MeshNorms(Module):
     def __init__(self, faces: torch.Tensor):

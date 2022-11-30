@@ -17,6 +17,105 @@ def list_zip(zippath: str, folder: str = '') -> List[str]:
             folder = folder + '/'
         return list(filter(lambda x: x.startswith(folder) and x != folder, input_zip.namelist()))
 
+def get_closest_ind_after(arr_times, current_time):
+    diff = arr_times - current_time
+    mask = diff > 0
+    if mask.sum() == 0:
+        return len(arr_times) - 1
+    mask_inds = np.nonzero(mask)[0]
+    mindiff_ind = mask_inds[np.argmin(diff[mask])]
+    return mindiff_ind
+
+
+def get_closest_ind_before(arr_times, current_time):
+    diff = arr_times - current_time
+    mask = diff < 0
+    if mask.sum() == 0:
+        return 0
+    mask_inds = np.nonzero(mask)[0]
+    mindiff_ind = mask_inds[np.argmax(diff[mask])]
+    return mindiff_ind
+
+class ObjectLocation:
+    def __init__(self, translation, quaternion, time=None):
+        self._translation = np.asarray(translation)
+        self._quaternion = np.asarray(quaternion)
+        if time is None:
+            self._time = None
+        else:
+            self._time = float(time)
+
+    def to_dict(self):
+        return {"position": self._translation.tolist(),
+                "quaternion": self._quaternion.tolist()}
+
+    @property
+    def translation(self) -> np.ndarray:
+        return self._translation
+
+    @property
+    def position(self) -> np.ndarray:
+        return self._translation
+
+    @property
+    def quaternion(self) -> np.ndarray:
+        return self._quaternion
+
+    @property
+    def time(self) -> float:
+        return self._time
+
+    def __getitem__(self, item):
+        if item in ["position", "translation"]:
+            return self.translation
+        elif item == "quaternion":
+            return self.quaternion
+        elif item == "time":
+            return self.time
+        else:
+            raise IndexError(f"No such index '{item}'")
+
+class ObjectTrajectory:
+    def __init__(self, traj_poses, traj_quats, traj_times):
+        assert len(traj_poses) == len(traj_quats) == len(traj_times)
+        self._translations = np.asarray(traj_poses)
+        self._quaternions = np.asarray(traj_quats)
+        self._times = np.asarray(traj_times)
+
+    @property
+    def translations(self) -> np.ndarray:
+        return self._translations
+
+    @property
+    def positions(self) -> np.ndarray:
+        return self._translations
+
+    @property
+    def quaternions(self) -> np.ndarray:
+        return self._quaternions
+
+    @property
+    def times(self) -> np.ndarray:
+        return self._times
+
+    def __getitem__(self, item: int):
+        return ObjectLocation(self.translations[item], self.quaternions[item], time=self.times[item])
+
+    def __len__(self):
+        return len(self._translations)
+
+    @classmethod
+    def cat_trajectories(cls, traj_list: List["ObjectTrajectory"]):
+        transls = []
+        quats = []
+        times = []
+        for traj in traj_list:
+            transls.append(traj.translations)
+            quats.append(traj.quaternions)
+            times.append(traj.times)
+        res = cls(np.concatenate(transls, axis=0), np.concatenate(quats, axis=0), np.concatenate(times, axis=0))
+        return res
+
 
 def open_from_zip(zippath: str, datapath: str, return_zip_path: bool = False) -> Union[BytesIO, Tuple[BytesIO, str]]:
     """
