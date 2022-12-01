@@ -165,7 +165,7 @@ class SMPLXColoredModel(SimpleMesh, SMPLXModelBase):
         super().__init__(*args, **kwargs)
         self.set_uniform_color()
 
-    def set_uniform_color(self, color=(200, 200, 200, 255)):
+    def set_uniform_color(self, color=(100, 100, 100, 255)):
         self.color = color
         self.vertex_colors = np.tile(np.array(color, dtype=np.uint8).reshape(1, 4), (self.nglverts, 1))
 
