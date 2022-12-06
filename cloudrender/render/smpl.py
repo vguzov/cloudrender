@@ -22,7 +22,7 @@ class SMPLXModelBase(DynamicTimedRenderable):
             *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.color = None
-        self.smpl_root = smpl_root
+        self.smpl_root = str(smpl_root)
         self.device = torch.device(device if device is not None else "cpu")
         self.template = template
         self.set_global_offset(global_offset)
