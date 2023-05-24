@@ -10,13 +10,11 @@ uniform mat4 P;
 
 in VS_OUT {
     vec4 color;
-    int inst_id;
     vec3 norm;
     vec4 poseMV;
 } gs_in[];
 
 out vec4 vcolor;
-flat out int frag_inst_id;
 
 void main() {
     mat4 MVP = P*V*M;
@@ -32,17 +30,19 @@ void main() {
 
     float color_mul = 1;
     vcolor = vec4(gs_in[0].color.rgb*color_mul+(1-color_mul), gs_in[0].color.a);
-    frag_inst_id = gs_in[0].inst_id;
 
     gl_Position = position - width_offset - height_offset;
     EmitVertex();
 
+    vcolor = vec4(gs_in[0].color.rgb*color_mul+(1-color_mul), gs_in[0].color.a);
     gl_Position = position + width_offset - height_offset;
     EmitVertex();
 
+    vcolor = vec4(gs_in[0].color.rgb*color_mul+(1-color_mul), gs_in[0].color.a);
     gl_Position = position - width_offset + height_offset;
     EmitVertex();
 
+    vcolor = vec4(gs_in[0].color.rgb*color_mul+(1-color_mul), gs_in[0].color.a);
     gl_Position = position + width_offset + height_offset;
     EmitVertex();
 

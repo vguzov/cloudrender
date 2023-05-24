@@ -4,6 +4,8 @@ layout (triangle_strip, max_vertices = 4) out;
 
 uniform float width_mul;
 uniform float splat_size;
+uniform mat4 M;
+uniform mat4 V;
 uniform mat4 P;
 
 in VS_OUT {

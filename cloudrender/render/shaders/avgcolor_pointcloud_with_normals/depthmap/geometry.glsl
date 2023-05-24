@@ -7,19 +7,16 @@ uniform float splat_size;
 uniform mat4 M;
 uniform mat4 V;
 uniform mat4 P;
+//uniform float depth_offset;
 
 in VS_OUT {
-    vec4 color;
-    int inst_id;
     vec3 norm;
     vec4 poseMV;
 } gs_in[];
 
-out vec4 vcolor;
-flat out int frag_inst_id;
-
 void main() {
     mat4 MVP = P*V*M;
+//    vec4 depth_offset_perspective = P*vec4(0,0,depth_offset,0);
     vec4 vertexPosMV = gs_in[0].poseMV;
     vec3 norm = normalize(gs_in[0].norm);
     vec4 position = gl_in[0].gl_Position;
@@ -30,20 +27,16 @@ void main() {
     vec4 width_offset = MVP*vec4(base_size*splat_plane_vct1,0);
     vec4 height_offset = MVP*vec4(base_size*splat_plane_vct2,0);
 
-    float color_mul = 1;
-    vcolor = vec4(gs_in[0].color.rgb*color_mul+(1-color_mul), gs_in[0].color.a);
-    frag_inst_id = gs_in[0].inst_id;
-
-    gl_Position = position - width_offset - height_offset;
+    gl_Position = position - width_offset - height_offset; //+ depth_offset_perspective;
     EmitVertex();
 
-    gl_Position = position + width_offset - height_offset;
+    gl_Position = position + width_offset - height_offset; //+ depth_offset_perspective;
     EmitVertex();
 
-    gl_Position = position - width_offset + height_offset;
+    gl_Position = position - width_offset + height_offset; //+ depth_offset_perspective;
     EmitVertex();
 
-    gl_Position = position + width_offset + height_offset;
+    gl_Position = position + width_offset + height_offset; //+ depth_offset_perspective;
     EmitVertex();
 
     EndPrimitive();

@@ -5,6 +5,6 @@ flat in int frag_inst_id;
 
 layout(location = 0) out vec4 color;
 
-void main(){
+void main() {
 	color = vcolor;
 }
