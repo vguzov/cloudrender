@@ -54,7 +54,7 @@ class SMPLXModelBase(DynamicTimedRenderable):
         #     self.model_layer.v_template[:] += torch.tensor(self.global_offset[np.newaxis, :], dtype=self.model_layer.v_template.dtype,
         #                                                    device=self.device)
         self.normals_layer = MeshNorms(
-            self.model_layer.faces_tensor)  # torch.tensor(self.model_layer.faces.astype(np.long), dtype=torch.long, device=self.device))
+            self.model_layer.faces_tensor)  # torch.tensor(self.model_layer.faces.astype(int), dtype=torch.long, device=self.device))
         self.gender = gender
         self.smpl_compatible = smpl_compatible
         self._current_params = {x: getattr(self.model_layer, x).squeeze(0).clone() for x in self.available_params}
@@ -66,8 +66,8 @@ class SMPLXModelBase(DynamicTimedRenderable):
         return param
 
     def _finalize_init(self):
-        self.faces_numpy = self.model_layer.faces.astype(np.long)
-        self.faces = self.model_layer.faces_tensor  # torch.tensor(self.model_layer.faces.astype(np.long), dtype=torch.long, device=self.device)
+        self.faces_numpy = self.model_layer.faces.astype(int)
+        self.faces = self.model_layer.faces_tensor  # torch.tensor(self.model_layer.faces.astype(int), dtype=torch.long, device=self.device)
         self.flat_faces = self.faces.view(-1)
 
     def set_body_template(self, template):

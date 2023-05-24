@@ -87,7 +87,7 @@ class DepthVideo(SimplePointcloud, DynamicTimedRenderable):
             return self.current_frame_cloud[0]
         depth, colors = self.load_depth_color(self.current_sequence_frame_ind)
         nanmask = depth == 0
-        d = depth.copy().astype(np.float) / 1000.
+        d = depth.copy().astype(np.float64) / 1000.
         d[nanmask] = np.nan
         pc = self.pc_table_ext * d[..., np.newaxis]
         pc_validmask = np.isfinite(pc[:, :, 0])

@@ -40,7 +40,7 @@ class SMPLModel(SimpleMesh):
         if self.global_offset is not None:
             self.model_layer.v_template[:] += torch.tensor(self.global_offset[np.newaxis, :], dtype=self.model_layer.v_template.dtype,
                                                            device=self.device)
-        self.normals_layer = MeshNorms(self.model_layer.faces_tensor) #torch.tensor(self.model_layer.faces.astype(np.long), dtype=torch.long, device=self.device))
+        self.normals_layer = MeshNorms(self.model_layer.faces_tensor) #torch.tensor(self.model_layer.faces.astype(int), dtype=torch.long, device=self.device))
         self.gender = gender
         self.shape_params = torch.zeros(10, device=self.device) if shape_params is None else \
             torch.tensor(shape_params, dtype=torch.float32, device=self.device)
@@ -53,8 +53,8 @@ class SMPLModel(SimpleMesh):
 
     def _finalize_init(self):
         super()._finalize_init()
-        self.faces_numpy = self.model_layer.faces.astype(np.long)
-        self.faces = self.model_layer.faces_tensor #torch.tensor(self.model_layer.faces.astype(np.long), dtype=torch.long, device=self.device)
+        self.faces_numpy = self.model_layer.faces.astype(int)
+        self.faces = self.model_layer.faces_tensor #torch.tensor(self.model_layer.faces.astype(int), dtype=torch.long, device=self.device)
         self.flat_faces = self.faces.view(-1)
 
     def update_params(self, pose=None, shape=None, translation=None):
