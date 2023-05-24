@@ -304,9 +304,9 @@ class DynamicTimedRenderable(DynamicRenderable):
         super().set_sequence(*args, **kwargs)
         self.default_frame_time = default_frame_time
         if times is not None:
-            self.sequence_frame_times = np.array(times, dtype=np.float)
+            self.sequence_frame_times = np.array(times, dtype=np.float64)
         else:
-            self.sequence_frame_times = np.arange(self.sequence_len, dtype=np.float)*self.default_frame_time
+            self.sequence_frame_times = np.arange(self.sequence_len, dtype=np.float64)*self.default_frame_time
         self.current_time = self.time_offset
 
     def unset_sequence(self):
