@@ -27,11 +27,11 @@ class RigidObject(DynamicTimedRenderable):
         obj_model_quat = obj_location["quaternion"]
         self.init_model_extrinsics(obj_model_quat, obj_model_position)
 
-class RididObjectSimpleMesh(SimpleMesh, RigidObject):
+class RigidObjectSimpleMesh(SimpleMesh, RigidObject):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
-class RididObjectSimplePointcloud(SimplePointcloud, RigidObject):
+class RigidObjectSimplePointcloud(SimplePointcloud, RigidObject):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
 
