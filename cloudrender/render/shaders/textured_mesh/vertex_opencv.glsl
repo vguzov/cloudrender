@@ -16,7 +16,7 @@ out VS_OUT {
 
 uniform mat4 M;
 uniform mat4 V;
-uniform float distorsion_coeff[DIST_DEGREE];
+uniform float distortion_coeff[DIST_DEGREE];
 uniform vec2 center_off;
 uniform vec2 focal_dist;
 uniform float far;
@@ -26,12 +26,10 @@ void main(){
 	vs_out.pose = vec3(M * vec4(vertexPos, 1.0));
 	vec2 xy1 = vertexPosMV.xy/vertexPosMV.z;
 	float radius_sq = dot(xy1,xy1);
-	float radius_quad = radius_sq*radius_sq;
-	float radial_distorsion = 1+distorsion_coeff[0]*radius_sq+distorsion_coeff[1]*radius_quad+
-		distorsion_coeff[4]*radius_quad*radius_sq;
-	vec2 tan_distorsion = vec2(2*distorsion_coeff[2]*xy1.x*xy1.y+distorsion_coeff[3]*(radius_sq+2*xy1.x*xy1.x),
-								distorsion_coeff[2]*(radius_sq+2*xy1.y*xy1.y)+2*distorsion_coeff[3]*xy1.x*xy1.y);
-	vec2 xy2 = xy1*radial_distorsion+tan_distorsion;
+	float radial_distortion = ((distortion_coeff[4]*radius_sq+distortion_coeff[1])*radius_sq+distortion_coeff[0])*radius_sq+1;
+	vec2 tan_distortion = vec2(2*distortion_coeff[2]*xy1.x*xy1.y+distortion_coeff[3]*(radius_sq+2*xy1.x*xy1.x),
+								distortion_coeff[2]*(radius_sq+2*xy1.y*xy1.y)+2*distortion_coeff[3]*xy1.x*xy1.y);
+	vec2 xy2 = xy1*radial_distortion+tan_distortion;
 	vec2 res = focal_dist*xy2+center_off;
 	if (res.x>1||res.x<-1||res.y>1||res.y<-1)
 	{

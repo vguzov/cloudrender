@@ -48,6 +48,8 @@ class SimplePointcloud(Pointcloud):
         super().__init__(*args, **kwargs)
         self.indexing_offset = indexing_offset
         self.shader_set_name = "simple_pointcloud"
+        self.set_overlay_color()
+        self.set_hsv_multiplier()
 
     def _init_shaders(self, camera_model, shader_mode):
         if self.indexing_offset is not None and (self.draw_shadows or self.generate_shadows):
@@ -64,7 +66,7 @@ class SimplePointcloud(Pointcloud):
             shader.initShaderFromGLSL([os.path.join(dirname, f"shaders/{self.shader_set_name}/vertex_{camera_model}.glsl")],
                                       [os.path.join(dirname, f"shaders/{self.shader_set_name}/fragment.glsl")],
                                       [os.path.join(dirname, f"shaders/{self.shader_set_name}/geometry.glsl")])
-        self.context.shader_ids.update(self.locate_uniforms(self.shader, ['splat_size']))
+        self.context.shader_ids.update(self.locate_uniforms(self.shader, ['splat_size', 'overlay_color', 'hsv_multiplier']))
 
         if self.generate_shadows:
             shadowgen_shader = self.shadowgen_shader = Shader()
@@ -123,6 +125,12 @@ class SimplePointcloud(Pointcloud):
     def set_splat_size(self, splat_size):
         self.context.splat_size = splat_size
 
+    def set_overlay_color(self, color=(200, 200, 200, 0)):
+        self.overlay_color = np.asarray(color, dtype=np.uint8)
+
+    def set_hsv_multiplier(self, hsv_multiplier=(1, 1, 1)):
+        self.hsv_multiplier = hsv_multiplier
+
     def get_splat_size(self):
         return self.context.splat_size
 
@@ -133,6 +141,8 @@ class SimplePointcloud(Pointcloud):
         M = self.context.Model
         shadowmaps_lightMVP = [np.array(s.light_VP * M) for s in shadowmaps]
         shadowmaps_lightMVP = np.array(shadowmaps_lightMVP, dtype='f4')
+        gl.glUniform4f(self.context.shader_ids['overlay_color'], *(self.overlay_color.astype(np.float32) / 255.))
+        gl.glUniform3f(self.context.shader_ids['hsv_multiplier'], *self.hsv_multiplier)
         if self.draw_shadows:
             # TODO: test if it should be shader_ids instead of self.context.shader_ids
             gl.glUniform1iv(self.context.shader_ids['shadowmap_enabled'], self.SHADOWMAPS_MAX, shadowmaps_enabled)
@@ -243,19 +253,19 @@ class AvgcolorPointcloudWithNormals(Pointcloud):
             # self.context.shader_ids.update(self.locate_uniforms(self.shader, ['shadowmap_MVP', 'shadowmap_enabled',
             #                                                                   'shadowmaps', 'shadow_color']))
 
-            #TODO: shadows support
+            # TODO: shadows support
             self.agg_shader.initShaderFromGLSL([dirname / f"shaders/{self.shader_set_name}/vertex_{camera_model}.glsl"],
                                                [dirname / f"shaders/{self.shader_set_name}/fragment.glsl"],
                                                [dirname / f"shaders/{self.shader_set_name}/geometry.glsl"])
         else:
-            self.agg_shader.initShaderFromGLSL([dirname/f"shaders/{self.shader_set_name}/vertex_{camera_model}.glsl"],
-                                      [dirname/f"shaders/{self.shader_set_name}/fragment.glsl"],
-                                      [dirname/f"shaders/{self.shader_set_name}/geometry.glsl"])
-        self.norm_shader.initShaderFromGLSL([dirname/f"shaders/{self.shader_set_name}/normalization/vertex.glsl"],
-                                                   [dirname/f"shaders/{self.shader_set_name}/normalization/fragment.glsl"])
-        self.dmap_shader.initShaderFromGLSL([dirname/f"shaders/{self.shader_set_name}/depthmap/vertex_{camera_model}.glsl"],
-                                                [dirname/f"shaders/{self.shader_set_name}/depthmap/fragment.glsl"],
-                                                [dirname/f"shaders/{self.shader_set_name}/depthmap/geometry.glsl"])
+            self.agg_shader.initShaderFromGLSL([dirname / f"shaders/{self.shader_set_name}/vertex_{camera_model}.glsl"],
+                                               [dirname / f"shaders/{self.shader_set_name}/fragment.glsl"],
+                                               [dirname / f"shaders/{self.shader_set_name}/geometry.glsl"])
+        self.norm_shader.initShaderFromGLSL([dirname / f"shaders/{self.shader_set_name}/normalization/vertex.glsl"],
+                                            [dirname / f"shaders/{self.shader_set_name}/normalization/fragment.glsl"])
+        self.dmap_shader.initShaderFromGLSL([dirname / f"shaders/{self.shader_set_name}/depthmap/vertex_{camera_model}.glsl"],
+                                            [dirname / f"shaders/{self.shader_set_name}/depthmap/fragment.glsl"],
+                                            [dirname / f"shaders/{self.shader_set_name}/depthmap/geometry.glsl"])
         self.context.agg_shader_ids = {}
         self.context.dmap_shader_ids = {}
         self.context.norm_shader_ids = {}
@@ -282,7 +292,6 @@ class AvgcolorPointcloudWithNormals(Pointcloud):
             self.shadowgen_context.shader_ids.update(self.locate_uniforms(self.shadowgen_shader,
                                                                           StandardProjectionCameraModel.uniforms_names))
             self.shadowgen_context.shader_ids.update(self.locate_uniforms(self.shadowgen_shader, ["M"]))
-
 
     def _finalize_init(self):
         self.set_splat_size(0.5)
@@ -344,7 +353,8 @@ class AvgcolorPointcloudWithNormals(Pointcloud):
 
     def _get_glnorms(self, pointcloud: Union[Pointcloud.PointcloudContainer, trimesh.points.PointCloud]):
         if isinstance(pointcloud, trimesh.points.PointCloud):
-            assert "ply_raw" in pointcloud.metadata and "nx" in pointcloud.metadata['ply_raw']['vertex']['properties'], "PC normals are required for this type of cloud"
+            assert "ply_raw" in pointcloud.metadata and "nx" in pointcloud.metadata['ply_raw']['vertex'][
+                'properties'], "PC normals are required for this type of cloud"
             glnorms = np.copy(np.stack([pointcloud.metadata['ply_raw']['vertex']['data'][x] for x in ["nx", "ny", "nz"]], axis=1).astype(np.float32),
                               order='C')
         else:
@@ -383,7 +393,7 @@ class AvgcolorPointcloudWithNormals(Pointcloud):
         self.context.coords_vao = gl.glGenVertexArrays(1)
         gl.glBindVertexArray(self.context.coords_vao)
 
-        glcoords = np.copy(np.dstack(np.meshgrid(*[np.arange(x) for x in self.resolution])).reshape(-1,2).astype(np.float32), order='C')
+        glcoords = np.copy(np.dstack(np.meshgrid(*[np.arange(x) for x in self.resolution])).reshape(-1, 2).astype(np.float32), order='C')
         self.context.coordsbuffer = gl.glGenBuffers(1)
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.context.coordsbuffer)
         gl.glBufferData(gl.GL_ARRAY_BUFFER, glcoords.nbytes, glcoords, gl.GL_STATIC_DRAW)
@@ -426,7 +436,7 @@ class AvgcolorPointcloudWithNormals(Pointcloud):
             gl.glUniform1f(shader_ids['depth_offset'], self.context.depth_offset)
         if self.draw_shadows:
             return
-            #TODO: make shadows support
+            # TODO: make shadows support
             shadowmaps_enabled = np.zeros(self.SHADOWMAPS_MAX, dtype=np.int32)
             shadowmaps_enabled[:len(shadowmaps)] = 1
             M = self.context.Model
@@ -476,7 +486,7 @@ class AvgcolorPointcloudWithNormals(Pointcloud):
         gl.glDepthMask(gl.GL_TRUE)
         gl.glDepthFunc(gl.GL_LESS)
 
-        #Pass 1: depthmap
+        # Pass 1: depthmap
 
         self.dmap_shader.begin()
         self.upload_uniforms(self.context.dmap_shader_ids, lights, shadowmaps)
@@ -502,7 +512,7 @@ class AvgcolorPointcloudWithNormals(Pointcloud):
         gl.glDisableVertexAttribArray(2)
         self.dmap_shader.end()
 
-        #Pass 2: color aggregation
+        # Pass 2: color aggregation
 
         gl.glClear(gl.GL_COLOR_BUFFER_BIT)
         gl.glDepthMask(gl.GL_FALSE)
@@ -548,7 +558,7 @@ class AvgcolorPointcloudWithNormals(Pointcloud):
         gl.glBindBuffer(gl.GL_ARRAY_BUFFER, self.context.coordsbuffer)
         gl.glVertexAttribPointer(0, 2, gl.GL_FLOAT, gl.GL_FALSE, 0, None)
 
-        gl.glDrawArrays(gl.GL_POINTS, 0, self.resolution[0]*self.resolution[1])
+        gl.glDrawArrays(gl.GL_POINTS, 0, self.resolution[0] * self.resolution[1])
 
         gl.glDisableVertexAttribArray(0)
         self.norm_shader.end()
@@ -587,17 +597,6 @@ class AvgcolorPointcloudWithNormals(Pointcloud):
         gl.glDisableVertexAttribArray(2)
         self.shadowgen_shader.end()
         return True
-
-
-
-
-
-
-
-
-
-
-
 
 
 class SimplePointcloudProgressive(SimplePointcloud):
@@ -691,7 +690,8 @@ class SimplePointcloudWithNormals(SimplePointcloud):
 
     def _get_glnorms(self, pointcloud: Union[Pointcloud.PointcloudContainer, trimesh.points.PointCloud]):
         if isinstance(pointcloud, trimesh.points.PointCloud):
-            assert "ply_raw" in pointcloud.metadata and "nx" in pointcloud.metadata['ply_raw']['vertex']['properties'], "PC normals are required for this type of cloud"
+            assert "ply_raw" in pointcloud.metadata and "nx" in pointcloud.metadata['ply_raw']['vertex'][
+                'properties'], "PC normals are required for this type of cloud"
             glnorms = np.copy(np.stack([pointcloud.metadata['ply_raw']['vertex']['data'][x] for x in ["nx", "ny", "nz"]], axis=1).astype(np.float32),
                               order='C')
         else:

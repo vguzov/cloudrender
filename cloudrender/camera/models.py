@@ -110,26 +110,26 @@ class OcamCameraModel(BaseCameraModel):
 
 
 class OpenCVCameraModel(BaseCameraModel):
-    uniforms_names = BaseCameraModel.uniforms_names + ['distorsion_coeff', 'center_off',
+    uniforms_names = BaseCameraModel.uniforms_names + ['distortion_coeff', 'center_off',
                                                        'focal_dist', 'far', 'width_mul']
 
     def __init__(self):
         super().__init__("opencv")
 
-    def init_intrinsics(self, image_size, focal_dist, center, distorsion_coeffs, far=20.):
-        assert len(distorsion_coeffs) == 5
+    def init_intrinsics(self, image_size, focal_dist, center, distortion_coeffs, far=20.):
+        assert len(distortion_coeffs) == 5
         image_size = np.array(image_size)
         focal_dist = np.array(focal_dist)
         center = np.array(center)
-        distorsion_coeffs = np.array(distorsion_coeffs)
+        distortion_coeffs = np.array(distortion_coeffs)
         self.context.focal_dist = (focal_dist / image_size * 2).astype(np.float32).copy()
         self.context.center_off = (center / image_size * 2 - 1).astype(np.float32).copy()
-        self.context.distorsion_coeffs = distorsion_coeffs.astype(np.float32).copy()
+        self.context.distortion_coeffs = distortion_coeffs.astype(np.float32).copy()
         self.context.far = np.array(far).astype(np.float32).copy()
         self.context.width_mul = image_size[1] / image_size[0]
 
     def upload_intrinsics(self, shader_ids):
-        gl.glUniform1fv(shader_ids['distorsion_coeff'], 5, self.context.distorsion_coeffs)
+        gl.glUniform1fv(shader_ids['distortion_coeff'], 5, self.context.distortion_coeffs)
         gl.glUniform2fv(shader_ids['center_off'], 1, self.context.center_off)
         gl.glUniform2fv(shader_ids['focal_dist'], 1, self.context.focal_dist)
         gl.glUniform1f(shader_ids['far'], self.context.far)
