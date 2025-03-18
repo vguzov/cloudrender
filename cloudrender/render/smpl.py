@@ -18,7 +18,7 @@ class SMPLXModelBase(DynamicTimedRenderable):
                   "reye_pose"],
     }
 
-    def __init__(self, device=None, smpl_root=None, template=None, gender="neutral", flat_hand_mean=True, model_type="smpl",center_root_joint=True, global_offset = None,
+    def __init__(self, device=None, smpl_root=None, template=None, gender="neutral", flat_hand_mean=True, model_type="smpl",center_root_joint=True, global_offset = None, use_hand_pca=False,
             *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.color = None
@@ -27,6 +27,7 @@ class SMPLXModelBase(DynamicTimedRenderable):
         self.template = template
         self.set_global_offset(global_offset)
         self.center_root_joint = center_root_joint
+        self.use_hand_pca = use_hand_pca
         self.model_type = model_type
         smpl_compatible = False
         if self.smpl_root is None:
@@ -39,7 +40,7 @@ class SMPLXModelBase(DynamicTimedRenderable):
         self.nglverts = len(self.get_vertices()[0])
 
     def _init_model(self, gender='neutral', smpl_compatible=False, flat_hand_mean=True):
-        self.model_layer = smplx.create(self.smpl_root, model_type=self.model_type, gender=gender, use_pca=False, flat_hand_mean=flat_hand_mean).to(
+        self.model_layer = smplx.create(self.smpl_root, model_type=self.model_type, gender=gender, use_pca=self.use_hand_pca, flat_hand_mean=flat_hand_mean).to(
             self.device)
         # if self.center_root_joint:
         #     self.model_layer = centrify_smplx_root_joint(self.model_layer)
