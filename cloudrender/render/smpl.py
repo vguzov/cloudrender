@@ -7,7 +7,7 @@ from typing import Dict
 
 from .mesh import TexturedMesh, SimpleMesh, Mesh
 from .renderable import DynamicTimedRenderable
-from .utils import MeshNorms, centrify_smplx_root_joint
+from .utils import MeshNorms
 
 
 class SMPLXModelBase(DynamicTimedRenderable):
@@ -42,8 +42,6 @@ class SMPLXModelBase(DynamicTimedRenderable):
     def _init_model(self, gender='neutral', smpl_compatible=False, flat_hand_mean=True):
         self.model_layer = smplx.create(self.smpl_root, model_type=self.model_type, gender=gender, use_pca=self.use_hand_pca, flat_hand_mean=flat_hand_mean).to(
             self.device)
-        # if self.center_root_joint:
-        #     self.model_layer = centrify_smplx_root_joint(self.model_layer)
         self.model_layer.requires_grad_(False)
         if smpl_compatible:
             smpl_model = smplx.create(self.smpl_root, model_type="smpl", gender=gender)
@@ -51,11 +49,7 @@ class SMPLXModelBase(DynamicTimedRenderable):
         if self.template is not None:
             self.model_layer.v_template[:] = torch.tensor(self.template, dtype=self.model_layer.v_template.dtype,
                                                           device=self.device)
-        # if self.global_offset is not None:
-        #     self.model_layer.v_template[:] += torch.tensor(self.global_offset[np.newaxis, :], dtype=self.model_layer.v_template.dtype,
-        #                                                    device=self.device)
-        self.normals_layer = MeshNorms(
-            self.model_layer.faces_tensor)  # torch.tensor(self.model_layer.faces.astype(int), dtype=torch.long, device=self.device))
+        self.normals_layer = MeshNorms(self.model_layer.faces_tensor)
         self.gender = gender
         self.smpl_compatible = smpl_compatible
         self._current_params = {x: getattr(self.model_layer, x).squeeze(0).clone() for x in self.available_params}
@@ -68,16 +62,13 @@ class SMPLXModelBase(DynamicTimedRenderable):
 
     def _finalize_init(self):
         self.faces_numpy = self.model_layer.faces.astype(int)
-        self.faces = self.model_layer.faces_tensor  # torch.tensor(self.model_layer.faces.astype(int), dtype=torch.long, device=self.device)
+        self.faces = self.model_layer.faces_tensor
         self.flat_faces = self.faces.view(-1)
 
     def set_body_template(self, template):
         self.template = template
         self.model_layer.v_template[:] = torch.tensor(self.template, dtype=self.model_layer.v_template.dtype,
                                                       device=self.device)
-        # if self.global_offset is not None:
-        #     self.model_layer.v_template[:] += torch.tensor(self.global_offset[np.newaxis, :], dtype=self.model_layer.v_template.dtype,
-        #                                                    device=self.device)
 
     def update_params(self, **model_params):
         for param_name, param_val in model_params.items():
@@ -103,7 +94,6 @@ class SMPLXModelBase(DynamicTimedRenderable):
 
     def process_output(self, smpl_output, batch_params):
         if self.center_root_joint:
-            # batch_params = {x: self._current_params[x].unsqueeze(0) for x in self.available_params}
             return self.center_output(self.model_layer, batch_params, smpl_output)
         else:
             return smpl_output

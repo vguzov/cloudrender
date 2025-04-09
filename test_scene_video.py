@@ -8,7 +8,7 @@ import os
 import json
 import smplpytorch
 from cloudrender.render import SimplePointcloud, DirectionalLight
-from cloudrender.render.smpl import AnimatableSMPLModel
+from cloudrender.render.smpl import SMPLXColoredModel
 from cloudrender.camera import PerspectiveCameraModel
 from cloudrender.camera.trajectory import Trajectory
 from cloudrender.scene import Scene
@@ -21,9 +21,11 @@ from cloudrender.utils import trimesh_load_from_zip, load_hps_sequence
 logger = logging.getLogger("main_script")
 logger.setLevel(logging.INFO)
 
+SMPLX_ROOT = "./smplx_models" # Change this to your SMPL-X-compatible models folder
+
 
 # This example shows how to:
-# - render pointcloud
+# - render a pointcloud
 # - render a sequence of frames with moving SMPL mesh
 # - smoothly move the camera
 # - dump rendered frames to a video
@@ -95,7 +97,7 @@ renderable_pc = SimplePointcloud(camera=camera)
 # Turn off shadow generation from pointcloud
 renderable_pc.generate_shadows = False
 renderable_pc.init_context()
-pointcloud = trimesh_load_from_zip("test_assets/MPI_Etage6.zip", "*/pointcloud.ply")
+pointcloud = trimesh_load_from_zip("test_assets/MPI_Etage6-pc.zip", "pointcloud.ply")
 renderable_pc.set_buffers(pointcloud)
 main_scene.add_object(renderable_pc)
 
@@ -103,17 +105,17 @@ main_scene.add_object(renderable_pc)
 # Load human motion
 logger.info("Loading SMPL animation")
 # set different smpl_root to SMPL .pkl files folder if needed
-# Make sure to fix the typo for male model while unpacking SMPL .pkl files:
-# basicmodel_m_lbs_10_207_0_v1.0.0.pkl -> basicModel_m_lbs_10_207_0_v1.0.0.pkl
-renderable_smpl = AnimatableSMPLModel(camera=camera, gender="male",
-    smpl_root=os.path.join(os.path.dirname(smplpytorch.__file__), "native/models"))
-# Turn off shadow drawing for SMPL model, as self-shadowing produces artifacts usually
+renderable_smpl = SMPLXColoredModel(camera=camera, gender="male", model_type="smpl",
+    smpl_root=SMPLX_ROOT, center_root_joint=True)
+# Turn off shadow drawing for SMPL model, as self-shadowing usually produces artifacts
 renderable_smpl.draw_shadows = False
 renderable_smpl.init_context()
-motion_seq = load_hps_sequence("test_assets/SUB4_MPI_Etage6_working_standing.pkl", "test_assets/SUB4.json")
+motion_seq = load_hps_sequence("test_assets/SUB4_MPI_Etage6_working_standing.pkl", "test_assets/SUB4.json",
+                               smplxlib_format=True)
 renderable_smpl.set_sequence(motion_seq, default_frame_time=1/30.)
 # Let's set diffuse material for SMPL model
 renderable_smpl.set_material(0.3,1,0,0)
+renderable_smpl.set_uniform_color((200, 200, 200, 255))
 main_scene.add_object(renderable_smpl)
 
 
@@ -126,7 +128,7 @@ light = DirectionalLight(np.array([0., -1., -1.]), np.array([0.8, 0.8, 0.8]))
 smpl_model_shadowmap_offset = -light.direction*3
 smpl_model_shadowmap = main_scene.add_dirlight_with_shadow(light=light, shadowmap_texsize=(1024,1024),
                                     shadowmap_worldsize=(4.,4.,10.),
-                                    shadowmap_center=motion_seq[0]['translation']+smpl_model_shadowmap_offset)
+                                    shadowmap_center=motion_seq[0]['transl']+smpl_model_shadowmap_offset)
 
 
 # Set camera trajectory and fill in spaces between keypoints with interpolation
@@ -145,7 +147,7 @@ with VideoWriter("test_assets/output.mp4", resolution=resolution, fps=fps) as vw
         # Update dynamic objects
         renderable_smpl.set_time(current_time)
         smpl_model_shadowmap.camera.init_extrinsics(
-            pose=renderable_smpl.translation_params.cpu().numpy()+smpl_model_shadowmap_offset)
+            pose=renderable_smpl.global_translation+smpl_model_shadowmap_offset)
         # Move the camera along the trajectory
         camera_trajectory.apply(camera, current_time)
         # Clear OpenGL buffers

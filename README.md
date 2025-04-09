@@ -7,9 +7,10 @@ A visualization framework capable of rendering large pointclouds, dynamic SMPL m
 Optionally, if you want to run included test script:
 - EGL support (for headless rendering)
 - ffmpeg>=2.1 with libx264 enabled and ffprobe installed (for saving to video)
+- SMPL model files (see below)
 
 ## Installation
-#### Step 1. Get the code
+### Step 1. Get the code
 Copy the code without installation
 ```bash
 git clone https://github.com/vguzov/cloudrender
@@ -19,24 +20,29 @@ or install as a package with
 ```
 pip install cloudrender
 ```
-#### Step 2. Get the SMPL model
-- Follow install instructions at https://github.com/gulvarol/smplpytorch
-- Make sure to fix the typo for male model while unpacking SMPL .pkl files: `basicmodel_m_lbs_10_207_0_v1.0.0.pkl -> basicModel_m_lbs_10_207_0_v1.0.0.pkl`
+### Step 2. Get the SMPL model (optional, required for human body visualization)
+- Follow the installation instructions at https://github.com/vchoutas/smplx
+- For legacy version, follow the installation instructions at https://github.com/gulvarol/smplpytorch
 
 ## Running test script
 ### test_scene_video.py
-Run `download_test_assets.sh` – it will create `test_assets` folder and download everything you need for sample to work
-(3D scan pointcloud, human shape and motion files, camera trajectory file)
+Run `bash download_test_assets.sh` – it will create `test_assets` folder and download assets for the test script.
+(human shape and motion files, camera trajectory file)
+Additionally, you need to download the 3D scene scan from here: https://edmond.mpg.de/file.xhtml?fileId=274762
+and put it as `MPI_Etage6-pc.zip` in `test_assets` folder without unpacking.
 
-Run `test_scene_video.py`
+Run `test_scene_video.py`, make sure to change `SMPLX_ROOT` path in the script if needed.
 
-The following script will write a short video inside `test_assets/output.mp4` which should look similar to this:
+
+The following script will write a short video `test_assets/output.mp4` which should look similar to this:
 <p align="center">
 <img src="images/test_scene_video_output_example.gif" alt="output example"/>
 </p>
 
 ## More data
 Please check our HPS project page for more 3D scans and motion data: http://virtualhumans.mpi-inf.mpg.de/hps/
+
+Camera trajectory is created using [CloudVis interactive viewer](https://github.com/vguzov/cloudvis).
 
 ## Citation
 

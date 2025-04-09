@@ -1,7 +1,7 @@
 import os
 from glob import glob
 from setuptools import setup, find_packages
-version = '1.3.5'
+version = '1.3.6'
 
 with open("README.md", "r") as fi:
     long_description = fi.read()
